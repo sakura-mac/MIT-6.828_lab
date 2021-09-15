@@ -5,7 +5,7 @@ void
 f(void)
 {
     int a[4];
-    int *b = malloc(16);
+    int *b = (int *)malloc(16);
     int *c;
     int i;
 //第一行 1: a = %p, b = %p, c = %p
