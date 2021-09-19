@@ -8,6 +8,8 @@ b站视频
 
 https://www.bilibili.com/video/BV19k4y1C7kA?from=search&seid=14266879966158464981&spm_id_from=333.337.0.0
 
+个人安排：讲义--视频--材料--实验--回顾笔记--循环
+
 ## 实验
 
 1. C，汇编，工具和引导
@@ -28,8 +30,7 @@ https://www.bilibili.com/video/BV19k4y1C7kA?from=search&seid=1426687996615846498
    - 阅读《C程序语言设计》2.9/5.1/5.5/6.4章节
    - 指针作业（见本文件夹下）
    - [ppt关于硬件和x86](https://pdos.csail.mit.edu/6.828/2017/lec/l-x86.pdf)
-   - [第二节课笔记](https://pdos.csail.mit.edu/6.828/2017/lec/l-x86.html)
-   - [引导/硬件以来和相关的xv6文件](https://pdos.csail.mit.edu/6.828/2017/xv6/book-rev10.pdf)
+   - [第二节课笔记：PC结构](https://pdos.csail.mit.edu/6.828/2017/lec/l-x86.html)
    - [第三节课笔记：gdb使用](https://pdos.csail.mit.edu/6.828/2017/lec/gdb_slides.pdf)
 2. 实验2
    - [第四节课笔记：shell和os结构](https://pdos.csail.mit.edu/6.828/2017/lec/l-shell.txt)
