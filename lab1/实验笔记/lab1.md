@@ -10,6 +10,14 @@ AT&T汇编：http://www.delorie.com/djgpp/doc/brennan/brennan_att_inline_djgpp.h
 
 ```
 git clone https://pdos.csail.mit.edu/6.828/2017/jos.git lab
+
+#报错处理：fatal:unable to access <url> : server certificate...
+#进入你的配置:
+vim ~/.zshrc
+#或者
+vim ~/.bashrc
+#添加以下代码来让你的电脑信任服务器
+export GIT_SSL_NO_VERIFY=1
 ```
 
 编译
