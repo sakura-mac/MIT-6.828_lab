@@ -39,6 +39,8 @@ make qemu-gdb
 #再开一个相同路径的terminal
 make gdb
 #si命令逐步执行
+#关闭gdb：q
+#关闭qemu-gdb：ctrl + A 和 X,需要注意ctrl 与 A同时按住抬起后再按X,不要三个键同时按
 ```
 
 
