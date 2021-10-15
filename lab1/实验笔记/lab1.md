@@ -7,7 +7,7 @@ AT\&T汇编：<http://www.delorie.com/djgpp/doc/brennan/brennan_att_inline_djgpp
 安装lab的os：
 
     git clone https://pdos.csail.mit.edu/6.828/2017/jos.git lab
-
+    
     #报错处理：fatal:unable to access <url> : server certificate...
     #进入你的配置:
     vim ~/.zshrc
@@ -51,7 +51,7 @@ BIOS：Basic Input/Output System
     |     devices      |
     |                  |
     /\/\/\/\/\/\/\/\/\/\
-
+    
     /\/\/\/\/\/\/\/\/\/\
     |                  |
     |      Unused      |
@@ -127,11 +127,6 @@ bios通过读取bootsector进入内存，从0x7c00-0x7dff.当然，现在不止�
 
 我们通过GDB来设置breakpoint来跟踪boot loader过程
 
-    #b *0x7c00 意味着断点
-    #c 意味着继续执行到下一个断点前
-    #si N 意味着N步执行机器码
-    #x/Ni ADDR 意味着从给定地址显示N步机器码，这里没有*
-
 ![](https://tva1.sinaimg.cn/large/008i3skNly1gt5w9iq3t9j30ve0o4dis.jpg)
 
 对比三个文件可以发现：GDB没有数据类型指定，如movb会执行为mov，同时boot.asm相较于boot.S少了头文件的引入标志，同时对于GDT只剩下CR0的开启
@@ -182,12 +177,12 @@ bios通过读取bootsector进入内存，从0x7c00-0x7dff.当然，现在不止�
 
 编译时候将每个.c文件编译称.o文件，编码为硬件预期的二进制格式。在obj/kern/kernel里把所有的.o文件链接成二进制image（映像），转换为ELF格式，因此ELF英文解释为“可执行可链接的格式”。
 
-对于本实验，你只需要考虑它作为header的功能（所需来自ELF header 和program header table）：将后面的程序节加载入内存。boot loader不区分加载代码还是数据，直接加载然后执行就完事了。
+对于本实验，你只需要考虑它作为header的功能（所需来自ELF header 和program headers table）：将后面的程序节加载入内存。boot loader不区分加载代码还是数据，直接加载然后执行就完事了。
 
 我们可以输入以下指令进入内核program headers看所有节
 
     objdump -h obj/kern/kernel  
-    //自己写的工具链就要多加i386-jos-elf-objdump，呵呵我怎么可能那么折腾
+    //自己写的工具链就要多加i386-jos-elf-objdump
 
 你会看到很多节，远超上面列出来的。包括program header记录但是没有写进内存的。
 
@@ -199,8 +194,8 @@ bios通过读取bootsector进入内存，从0x7c00-0x7dff.当然，现在不止�
 
 接着还有以下两种指令供你参考：
 
-    objdump -h obj/boot/boot.out //看boot被加载的所有节
-    objdump -x obj/kern/kernel   //看内核program headers
+    objdump -h obj/boot/boot.out //看boot被加载的section headers
+    objdump -x obj/kern/kernel   //看内核所有headeres
 
 第二条命令执行后，可以看出Program Headers的字样，加载入内存的节会显示LOAD，和一些其他的信息，比如“paddr”代表物理地址，“vaddr”代表虚拟地址，“-sz”结尾代表大小
 
@@ -214,23 +209,23 @@ bios通过读取bootsector进入内存，从0x7c00-0x7dff.当然，现在不止�
 
 ![](https://tva1.sinaimg.cn/large/008i3skNly1gt86dwtrk8j30m80gedi1.jpg)
 
-这里的lgdtw命令即将指定内存后的六个字节存放的GDTR寄存器里，那么存放的都是0，说明本应该是0x7c64，这里是第一个错误。
+这里的lgdtw命令：将指定内存后的六个字节存放的GDTR寄存器里，发现存放的都是0，本应该是0x7c64，这里是第一个错误。
 
 紧接着看：下面的ljmp会卡死，这条指令意思是以32位模式跳到下一条指令，本应该是0x7c32，但是同样出现了问题，后续的无法执行，即第二个错误。
 
 ### Exercise6
 
-接着是内核的VMA，由于保护模式的建立（GDT），boot loader地址会指向低地址（VMA）但是实际上代码执行到高地址（LMA）。
+接着是内核的VMA，执行地址会指向高地址（VMA）但是实际上boot loader代码执行到低地址（LMA）。
 
-看ELF header，里面的e_entry包含了就是我们的内核的（main.c里最后一句）VMA，可以通过以下指令查看LMA
+看ELF header，里面的e_entry包含了就是我们的内核的（main.c里最后一句）VMA，可以通过以下指令查看entry的VMA
 
-    objdump -f obj/kern/kernel
+    objdump -f obj/kern/kernel //查看file header
 
 ![](https://tva1.sinaimg.cn/large/008i3skNly1gt96spmegtj30le04gaau.jpg)
 
 ![](https://tva1.sinaimg.cn/large/008i3skNly1gt96u5pk3rj30sa02ut99.jpg)
 
-我们可以看到这里这两个地址的区别，就在于保护模式的分段机制：KERNBASE的添加。
+我们可以看到这里这两个地址的区别，原因就在于ELF得到的有GDT的线性地址，在没有页表下的解决方案：KERNBASE的删减。
 
     #The kernel (this code) is linked at address ~(KERNBASE + 1 Meg), 
     # but the bootloader loads it at address ~1 Meg.
@@ -245,7 +240,7 @@ bios通过读取bootsector进入内存，从0x7c00-0x7dff.当然，现在不止�
 
 2.  在进入boot时候来通过以下指令查看
 
-        x/8x 0x00100000  //记得这个地址吗？是BIOS结束的下一个地址
+        x/8x 0x00100000  //记得这个地址吗？是BIOS结束的下一个地址:内核entry
 
 3.  然后再以相同方式看看kernel的进入时候的存放内容，告诉我为什么存放内容不同
 
@@ -253,37 +248,21 @@ bios通过读取bootsector进入内存，从0x7c00-0x7dff.当然，现在不止�
 
 ![](https://tva1.sinaimg.cn/large/008i3skNly1gt97i7mrsoj312q0figp0.jpg)
 
-如果你对boot干的事一清二楚的话，你就会知道，这个地址存放的八个字长内容不同是必然的。
+如果你对boot干的事（1.保护模式2.load kernel sector）一清二楚的话，你就会知道，这个地址存放的八个字长内容不同是必然的。
 
 ## Part 3: The Kernel
 
-接下来的exercise中种你将要写一些C代码了！
-
-    作者碎碎念（选看）：先说说保护模式，往往第一次看书，关于保护模式会有很长的章节，最终可能只能知道保护模式通过段选择子->GDT里段描述符->段基址来进行分段操作，但实际上这并不是保护模式的所有内涵。
-
-    首先保护模式是一个宽泛的概念，包含了分页机制，文件系统等实现；其次保护模式到底“保护”什么，这得看描述符里关于权限，段限长的信息描述->你应该知道保护什么了吧。
-
-    不过这种程度的保护还不够全面，结合分页机制的分段和纯粹的分段效果并不是单纯叠加的。
-
-    想想：分页之前我们得到了线性地址（虚拟地址），分页要做的就是转换为物理地址，这里有一个问题：
-
-    1. 线性地址和物理地址的关系
-
-    内存（物理）空间假设有4G，那么设计线性空间时我们非常大胆地也弄成了4G，于是相同的线性地址（线性空间）就会映射不同的物理空间，这对于用户程序或者说多进程，不仅有“大内存”的爽，也是一种“保护“。
-
-    但是问题又来了：内核空间对于进程是共享的，这怎么设计呢？很简单，每个进程的线性空间分成两部分：用户态和内核态，保证内核态映射相同即可，linux下3:1，win下1:1。
-
-    还有一个问题：这么大胆的线性空间的抽象层设计，内存不够怎么办？很显然这涉及内存换入换出的问题，关于内存和磁盘的换页，这里就不说算法了。不过换页又和分页机制的页表联系在一起，逻辑自洽，细节部分好好查资料思考吧。
+接下来的exercise中你将要写一些C代码了！
 
 ### 使用虚拟内存来在独立空间里工作
 
-让我们看看LMA和VMA，在进入内核时候我们就发现了LMA和VMA的开始不同：ELF头显示了0x10001c的执行地址但是boot loader给出了0x10018的调用。
+让我们看看LMA和VMA，在进入内核时候我们就发现了VMA和LMA的开始不同：ELF头显示了0x10001c的执行地址但是boot loader给出了0x10018的调用。
 
-不过现在要完成完整的VMA：分段分页结合的那种！
+不过现在要完成完整的LMA转换：分段分页：内核页表结构的生成
 
 在kern/kernel.ld里，你就能看到VMA和LMA，一般内核喜欢让程序链接虚拟地址高地址，但是如何转化为内存物理地址呢？这种机制在lab2里会详细讲解。
 
-对于本内核，VMA会给出0xf0100000，通过map分页得到物理地址0x00100000。现在先不说怎么做到，当然下个lab会教你如何在256MB限定下完成从虚拟地址0xf0000000 - 0xf0400000 映射物理地址0x00000000 - 0x00400000的分页map，好了扯远了。
+对于本内核，VMA会给出0xf0100000，通过map分页得到物理地址0x00100000。现在先不说怎么做到，当然下个lab会教你如何在256MB限定下完成从虚拟地址0xf0000000 - 0xf0400000 映射物理地址0x00000000 - 0x00400000的分页map。
 
 ### Exercise7
 
@@ -351,7 +330,7 @@ C语言里有print（）格式化输出，同样I/O也有，它叫cprintf，阅�
 
     “y=”之后应该输出什么（提示：不唯一）？为什么会这样？
 
-6.  假设GCC改变调用约定（高地址->低地址变为反向），在（参数）声明顺序下堆栈传参，你要怎么改cprintf（）或者它的接口，来成功传参数？
+6.  假设GCC改变调用约定（栈增长变为低地址->高地址），在（参数）声明顺序下堆栈传参，你要怎么改cprintf（）或者它的接口，来成功传参数？
 
 7.  提高实验：通过ASCII来显示彩色字符
 
@@ -361,9 +340,9 @@ C语言里有print（）格式化输出，同样I/O也有，它叫cprintf，阅�
 
 1.  决定内核在哪初始化，并且确定栈的位置
 
-2.  内核代码如何为栈保留空间
+2.  内核代码如何为栈申请空间
 
-3.  保留空间的end是栈指针初始化esp的指向吗？
+3.  栈空间的end是栈指针初始化esp的参考吗？
 
 我们知道栈是向下增长，具体为esp的逐步递减，在32位系统esp可以被4整除，这意味着esp的递减是4（比如0，4，8这样）。大量的指令比如call，通过使用这样的寄存器来访问地址
 
@@ -408,9 +387,9 @@ C语言里有print（）格式化输出，同样I/O也有，它叫cprintf，阅�
 
 *   第三行往后即再上层调用，以此类推
 
-你应该打印所有特别（？）的栈，通过学习kern/entry.S，你会发现怎么终止打印
+你应该打印合适的栈内容，从kern/entry.S中，确定什么时候终止打印
 
-接下来是关于接下来实验的理论提示。这是对K\&R第五章的一些内容（为啥现在说？）
+接下来是关于接下来实验的理论提示。这是对K\&R第五章的一些内容
 
 *   Int \*p= (int \*)100, 则（int）p+1=101,(int) (p+1)=104
 
@@ -420,9 +399,19 @@ C语言里有print（）格式化输出，同样I/O也有，它叫cprintf，阅�
 
 *   其实指针不难，你画图理解就行了
 
-每当操作系统对内存地址描述时，谨记：是值还是指针（址）。
+每当操作系统对内存地址描述时，谨记：是值还是指针（地址址）。
 
-###
+### Exercise12
+
+1. 修改backtrace函数：增加显示：eip，函数名，源文件名，eip对应行数
+
+2. 问题：在debuginfo_eip 中，__STAB_*是哪里来的？
+
+   ```
+   
+   ```
+
+3. 
 
 ## 回答问题汇总
 
@@ -455,20 +444,20 @@ C语言里有print（）格式化输出，同样I/O也有，它叫cprintf，阅�
     *p++;  // 将指针p的值加1，然后获取指针ip所指向的数据的值
     (*p)++;  // 将指针p所指向的数据的值加1
     2.对于a[i]，C编译器会立即将其转换为*(a+i)。同时对于i[a],计算结果相同。
-
+    
     3.数组名和指针的一个区别：指针是变量，可以进行赋值和加减运算；数组名不是变量，不能进行赋值和加减运算。
-
+    
     4.p[-1],在语法上是合法的，只要保证元素存在，因此带来了安全隐患。
-
+    
     5.指向同一个数组（包括数组最后一个元素的下一个元素，可能考虑到兼容字符的'\0'）的两个指针可以进行大小比较，而对没有指向同一个数组的两个指针进行大小比较的行为是undefined的。
-
+    
     6.指针的合法操作：同类指针赋值、指针加减某个整数、指向同一数组的两个指针相减或比较大小（存放的值而不是说指向的值）、将指针赋值为0或与0比较；
     指针的非法操作：两个指针相加、相乘、相除，以及指针与浮点数相加减等。
-
+    
     7.char *p = "now is the time"；是将一个指向字符数组的指针赋值给p，而不是字符串拷贝。C语言不提供任何对整个字符串作为一个单元进行处理的操作符。
-
+    
     注意通过字符串指针修改字符串内容的行为是undefined的：
-
+    
     char a[] = "now is the time";  // an array
     char *p = "now is the time";   // a pointer
 
@@ -482,7 +471,7 @@ C语言里有print（）格式化输出，同样I/O也有，它叫cprintf，阅�
 
 ## 关键文件注释
 
-### /boot/boot.S
+### boot/boot.S
 
 ```c
 #include <inc/mmu.h>
@@ -567,7 +556,7 @@ gdtdesc:
 
 ```
 
-### /boot/main.c
+### boot/main.c
 
 ```c
 #include <inc/x86.h>
@@ -697,7 +686,6 @@ readsect(void *dst, uint32_t offset)
 	// 读一个扇区
 	insl(0x1F0, dst, SECTSIZE/4);
 }
-
 ```
 
 ### Pointers.c
@@ -759,3 +747,22 @@ main(int ac, char **av)
     return 0;
 }
 ```
+
+### kern/printf.c
+
+```
+
+```
+
+### lib/printfmt.c
+
+```
+
+```
+
+### Kern/console.c
+
+```
+
+```
+
