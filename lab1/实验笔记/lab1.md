@@ -1,3 +1,5 @@
+
+
 参考官网：<https://pdos.csail.mit.edu/6.828/2017/labs/lab1/>
 
 AT\&T汇编：<http://www.delorie.com/djgpp/doc/brennan/brennan_att_inline_djgpp.html>
@@ -350,17 +352,19 @@ C语言里有print（）格式化输出，同样I/O也有，它叫cprintf，阅�
 
 1.  为了了解函数调用，让我们追踪 `test_backtrace` 函数地址在 `obj/kern/kernel.asm`，设置断点，看看内核会做些什呢
 
-2.  每次递归嵌套多少个word通过函数传入堆栈？他们分别是什么
+2.  每次递归嵌套多少个word通过函数传入栈？他们分别是什么
 
 3.  提示：你必须用本实验匹配的QEMU，不然你得自己翻译线性地址
 
 ### Exercise11
 
+monitor函数会在qemu的monitor（显示器）中让你看到一些日志，其中backtrace就能实现这个功能，当你输入：backtrace时候，就会打印日志
+
 1.  实现上述指定的backtrace函数。
 
-对于这个exercise给你一些提示：你需要实现一个栈回溯功能，意味着你应该调用mon_backtrace()，原型在kern/monitor.c里。同时read_ebp() 在inc/x86.h很有用。你应该让用户在交互时使用这个函数
+对于这个exercise给你一些提示：你需要实现一个栈回溯功能，意味着你应该实现并调用mon_backtrace()，原型在kern/monitor.c里。同时read_ebp() 在inc/x86.h很有用。你应该让用户在交互时使用这个函数
 
-这个栈回溯功能应该长这个格式
+这个栈回溯功能应该输出这个格式
 
     Stack backtrace:
       ebp f0109e58  eip f0100a62  args 00000001 f0109e80 f0109e98 f0100ed2 00000031
@@ -401,15 +405,34 @@ C语言里有print（）格式化输出，同样I/O也有，它叫cprintf，阅�
 
 ### Exercise12
 
-1. 修改backtrace函数：增加显示：eip，函数名，源文件名，eip对应行数
+1. monitor修改backtrace函数，增加显示：eip，函数名，源文件名，eip对应行数，在kernel/kdebug.c修改debuginfo_eip
 
 2. 问题：在debuginfo_eip 中，__STAB_*是哪里来的？
 
    ```
+   给出以下线索
+   1.kern/kernel.ld找出_STAB_*
+   2.运行objdump -h/-G kern/kernel
+   3.gcc -pipe -nostdinc -O2 -fno-builtin -I. -MD -Wall -Wno-format -DJOS_KERNEL -gstabs -c -S kern/init.c,然后查看init.S
+   4.确定bootloader在加载内核ELF时候是否把符号表加载进来
+   ```
+
+3. ```
+   编写代码，让mon_backtrace能够调用debuginfo_eip，实现后者，输出格式如下：
+   K> backtrace
+   Stack backtrace:
+     ebp f010ff78  eip f01008ae  args 00000001 f010ff8c 00000000 f0110580 00000000
+            kern/monitor.c:143: monitor+106
+     ebp f010ffd8  eip f0100193  args 00000000 00001aac 00000660 00000000 00000000
+            kern/init.c:49: i386_init+59
+     ebp f010fff8  eip f010003d  args 00000000 00000000 0000ffff 10cf9a00 0000ffff
+            kern/entry.S:70: <unknown>+0
+   K> 
+   tips：printf("%.*s", length, string)可以让你输出指定长度的字符串，对文件名好用
    
    ```
 
-3. 
+   
 
 ## 回答问题汇总
 
@@ -485,7 +508,15 @@ A：对于GDB而言，在我们模拟的qemu里，内核代码加载的地址应
 
 ### Exercise8
 
-1. 查看关键文件注释
+1. ```
+   //给出八进制代码
+   num = getuint(&ap, lflag);
+   			//设置基数为8
+   			base = 8;
+   			goto number;
+   ```
+
+   其余解释查看关键文件注释
 
 2. console.c
 
@@ -562,21 +593,194 @@ memcpy 内存复制
 
 ### Exercise9
 
-1. 
+给出obj/kern/kernel.asm中有关代码
+
+```
+1.内核为栈的开辟做准备：第一次没有esp，ebp，所以额外准备
+f010002f:	bd 00 00 00 00       	mov    $0x0,%ebp
+
+	# Set the stack pointer
+	movl	$(bootstacktop),%esp
+f0100034:	bc 00 00 11 f0       	mov    $0xf0110000,%esp
+
+	# 之前内核的entry作初始化，为栈开辟作准备，然后我们正式开始C代码，为接下来内核的main做准备：先开辟main栈
+	call	i386_init
+f0100039:	e8 6c 00 00 00       	call   f01000aa <i386_init>
+
+
+2.内核申请第一个栈：
+void
+i386_init(void)
+{
+f01000aa:	f3 0f 1e fb          	endbr32 
+f01000ae:	55                   	push   %ebp
+f01000af:	89 e5                	mov    %esp,%ebp
+f01000b1:	53                   	push   %ebx
+f01000b2:	83 ec 08             	sub    $0x8,%esp
+//紧接着为新的ELF加载做准备：.bss,static之类，之前只是确定位置，并没有清零
+```
 
 
 
 ### Exercise10
 
+给出test_backtrace及其有关反汇编代码
+
+```
+//test_backtrace
+void
+test_backtrace(int x)
+{
+f0100040:	f3 0f 1e fb          	endbr32 
+f0100044:	55                   	push   %ebp
+f0100045:	89 e5                	mov    %esp,%ebp
+f0100047:	56                   	push   %esi//第一个参数4B
+f0100048:	53                   	push   %ebx//第二个参数4B
+f0100049:	e8 7e 01 00 00       	call   f01001cc <__x86.get_pc_thunk.bx>
+f010004e:	81 c3 ba 12 01 00    	add    $0x112ba,%ebx
+f0100054:	8b 75 08             	mov    0x8(%ebp),%esi//看下面的eax
+	cprintf("entering test_backtrace %d\n", x);
+f0100057:	83 ec 08             	sub    $0x8,%esp
+f010005a:	56                   	push   %esi
+f010005b:	8d 83 d8 07 ff ff    	lea    -0xf828(%ebx),%eax
+f0100061:	50                   	push   %eax
+f0100062:	e8 26 0a 00 00       	call   f0100a8d <cprintf>
+	if (x > 0)
+f0100067:	83 c4 10             	add    $0x10,%esp
+f010006a:	85 f6                	test   %esi,%esi
+f010006c:	7e 29                	jle    f0100097 <test_backtrace+0x57>//x==0
+		test_backtrace(x-1);
+f010006e:	83 ec 0c             	sub    $0xc,%esp
+f0100071:	8d 46 ff             	lea    -0x1(%esi),%eax//x-1
+f0100074:	50                   	push   %eax//callee会将eax作为返回值使用，caller为callee传入x-1保存在这里
+f0100075:	e8 c6 ff ff ff       	call   f0100040 <test_backtrace>//递归调用
+f010007a:	83 c4 10             	add    $0x10,%esp
+	else
+		mon_backtrace(0, 0, 0);
+	cprintf("leaving test_backtrace %d\n", x);
+f010007d:	83 ec 08             	sub    $0x8,%esp
+f0100080:	56                   	push   %esi
+f0100081:	8d 83 f4 07 ff ff    	lea    -0xf80c(%ebx),%eax
+f0100087:	50                   	push   %eax
+f0100088:	e8 00 0a 00 00       	call   f0100a8d <cprintf>
+}
+f010008d:	83 c4 10             	add    $0x10,%esp
+f0100090:	8d 65 f8             	lea    -0x8(%ebp),%esp
+f0100093:	5b                   	pop    %ebx
+f0100094:	5e                   	pop    %esi
+f0100095:	5d                   	pop    %ebp
+f0100096:	c3                   	ret    
+
+//		mon_backtrace(0, 0, 0);
+f0100097:	83 ec 04             	sub    $0x4,%esp
+f010009a:	6a 00                	push   $0x0
+f010009c:	6a 00                	push   $0x0
+f010009e:	6a 00                	push   $0x0
+f01000a0:	e8 0c 08 00 00       	call   f01008b1 <mon_backtrace>
+f01000a5:	83 c4 10             	add    $0x10,%esp
+f01000a8:	eb d3                	jmp    f010007d <test_backtrace+0x3d>//返回test_backtrace
+
+
+//调用test_backtrace
+	// Test the stack backtrace function (lab 1 only)
+	test_backtrace(5);
+f01000f0:	c7 04 24 05 00 00 00 	movl   $0x5,(%esp)
+f01000f7:	e8 44 ff ff ff       	call   f0100040 <test_backtrace>
+```
+
 
 
 ### Exercise11
+
+给出mon_backtrace的补全代码
+
+```
+int
+mon_backtrace(int argc, char **argv, struct Trapframe *tf)//参数个数，参数列表，还有一个不知道啥，不影响
+{
+	int *ebp = (int *)read_ebp();//read得到ebp寄存器的值，然后转为指针：就像寄存器那样干
+	
+	cprintf("Stack backtrace:\n");
+	while((int)ebp != 0x0) {//end of print：main栈前
+		cprintf("  ebp %08x", *ebp);
+		cprintf("  eip %08x", *(ebp+1));
+		cprintf("  args");
+		cprintf(" %08x", *(ebp+2));
+		cprintf(" %08x", *(ebp+3));
+		cprintf(" %08x", *(ebp+4));
+		cprintf(" %08x", *(ebp+5));
+		cprintf(" %08x\n", *(ebp+6));//5个参数
+		ebp = (int *)(*ebp);//别忘了类型转换
+	}
+	return 0;
+}
+```
 
 
 
 ### Exercise12
 
+给出以下代码
 
+```
+//更详细代码看注释
+//backtrace
+int
+mon_backtrace(int argc, char **argv, struct Trapframe *tf)
+{
+	int *ebp = (int *)read_ebp();//like %ebp
+	cprintf("Stack backtrace:\n");
+	struct Eipdebuginfo info;//文件string信息，定义在kdebug.h
+
+	while (ebp != 0x0) {
+		// 第一行的当前ebp和栈环境是mon_backtrace的
+		cprintf("ebp %8x eip %8x args %08x %08x %08x %08x %08x ", 
+				ebp, ebp[1], ebp[2], ebp[3], ebp[4], ebp[5], ebp[6]);
+		debuginfo_eip(ebp[1], &info);
+		cprintf("%s:%d: %.*s+%d\n", info.eip_file, info.eip_line, info.eip_fn_namelen, 
+				info.eip_fn_name, ebp[1]-info.eip_fn_addr);
+		ebp = (int *)ebp[0];
+	}
+	return 0;
+}
+
+
+//Eipdebuginfo
+struct Eipdebuginfo {
+	const char *eip_file;		// Eip所在文件名
+	int eip_line;			// eip所在文件源代码行数
+
+	const char *eip_fn_name;	// eip所在函数名
+					//  - Note: not null terminated!
+	int eip_fn_namelen;		// 函数长度
+	uintptr_t eip_fn_addr;		// 函数开始地址
+	int eip_fn_narg;		// 函数的参数个数
+};
+
+//stab
+struct Stab {
+	uint32_t n_strx;	// index into string table of name
+	uint8_t n_type;         // 类型,比如fun，so
+	uint8_t n_other;        // misc info (usually empty)
+	uint16_t n_desc;        // 给定类型下的描述域,题目下是代码长度
+	uintptr_t n_value;	// 符号值，本题当作地址
+}
+
+
+//debuginfo_eip增加内容 
+stab_binsearch(stabs, &lline, &rline, N_SLINE, addr);//二分搜索得到代码行数
+if (lline <= rline) {
+    info->eip_line = stabs[lline].n_desc;
+} else {
+    return -1;
+}
+```
+
+给定符号表stab的例子更直观查看![](https://tva1.sinaimg.cn/large/008i3skNly1gvhgr7zagaj615a0gs0vx02.jpg)
+
+happy！
+
+![](https://tva1.sinaimg.cn/large/008i3skNly1gvhfsjm5x2j60og08kgmt02.jpg)
 
 ## 关键文件注释
 
@@ -1683,6 +1887,202 @@ iscons(int fdnum)
 {
 	// used by readline
 	return 1;
+}
+```
+
+
+
+### kern/kdebug.c
+
+```
+#include <inc/stab.h>
+#include <inc/string.h>
+#include <inc/memlayout.h>
+#include <inc/assert.h>
+
+#include <kern/kdebug.h>
+
+extern const struct Stab __STAB_BEGIN__[];	// Beginning of stabs table
+extern const struct Stab __STAB_END__[];	// End of stabs table
+extern const char __STABSTR_BEGIN__[];		// Beginning of string table
+extern const char __STABSTR_END__[];		// End of string table
+
+//Stab是一个增序的指令数组，包含了大量关于代码执行的诸如起始地址，函数名，等我们需要的信息，因此info需要stab数组来填充
+//1.stab_binsearch(stabs, region_left, region_right, type, addr)二分搜索指令地址，查找指定代码地址信息
+//	给以下例子，
+//		Index  Type   Address
+//		0      SO     f0100000
+//		13     SO     f0100040
+//		117    SO     f0100176
+//		118    SO     f0100178
+//		555    SO     f0100652
+//		556    SO     f0100654
+//		657    SO     f0100849
+//	给定参数:
+//		left = 0, right = 657;为左闭右闭边界
+//		stab_binsearch(stabs, &left, &right, N_SO, 0xf0100184);
+//	结果得到 left = 118, right = 554.，因此left是指令所在索引，right是下个指令索引，所以left>right代表失败
+
+static void
+stab_binsearch(const struct Stab *stabs, int *region_left, int *region_right,
+	       int type, uintptr_t addr)
+{
+	int l = *region_left, r = *region_right, any_matches = 0;
+
+	while (l <= r) {//l不同于*region_left
+		int true_m = (l + r) / 2, m = true_m;
+
+		// 过滤不正确的type节省时间，中间值向左偏移
+		while (m >= l && stabs[m].n_type != type)
+			m--;
+		if (m < l) {	// no match in [l, m]
+			l = true_m + 1;
+			continue;
+		}
+
+		// 实际的二分搜索代码
+		any_matches = 1;
+		if (stabs[m].n_value < addr) {
+			*region_left = m;
+			l = true_m + 1;
+		} else if (stabs[m].n_value > addr) {
+			*region_right = m - 1;
+			r = m - 1;
+		} else {
+			// exact match for 'addr', but continue loop to find
+			// *region_right
+			*region_left = m;
+			l = m;
+			addr++;
+		}
+	}
+
+	if (!any_matches)
+		*region_right = *region_left - 1;//非法判定成立准备
+	else {
+		// 由于符号表中存在地址相同的可能，所以排列情况下，我们要的就是最右的那个
+		for (l = *region_right;
+		     l > *region_left && stabs[l].n_type != type;
+		     l--)
+			/* do nothing */;
+		*region_left = l;//赋值
+	}
+}
+
+//2.debuginfo_eip调用二分搜索来填充info，成功返回0，失败返回-1，但是失败的时候，info可能也填充了一部分
+// debuginfo_eip(addr, info)
+//
+//	Fill in the 'info' structure with information about the specified
+//	instruction address, 'addr'.  Returns 0 if information was found, and
+//	negative if not.  But even if it returns negative it has stored some
+//	information into '*info'.
+//
+int
+debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
+{
+	const struct Stab *stabs, *stab_end;
+	const char *stabstr, *stabstr_end;
+	int lfile, rfile, lfun, rfun, lline, rline;
+
+	// Initialize *info
+	info->eip_file = "<unknown>";
+	info->eip_line = 0;
+	info->eip_fn_name = "<unknown>";
+	info->eip_fn_namelen = 9;
+	info->eip_fn_addr = addr;
+	info->eip_fn_narg = 0;
+
+	// Find the relevant set of stabs
+	if (addr >= ULIM) {
+		stabs = __STAB_BEGIN__;
+		stab_end = __STAB_END__;
+		stabstr = __STABSTR_BEGIN__;
+		stabstr_end = __STABSTR_END__;
+	} else {
+		// Can't search for user-level addresses yet!
+  	        panic("User address");
+	}
+
+	// String table validity checks
+	if (stabstr_end <= stabstr || stabstr_end[-1] != 0)
+		return -1;
+
+	// Now we find the right stabs that define the function containing
+	// 'eip'.  First, we find the basic source file containing 'eip'.
+	// Then, we look in that source file for the function.  Then we look
+	// for the line number.
+
+	// Search the entire set of stabs for the source file (type N_SO).
+	lfile = 0;
+	rfile = (stab_end - stabs) - 1;
+	stab_binsearch(stabs, &lfile, &rfile, N_SO, addr);
+	if (lfile == 0)
+		return -1;
+
+	// Search within that file's stabs for the function definition
+	// (N_FUN).
+	lfun = lfile;
+	rfun = rfile;
+	stab_binsearch(stabs, &lfun, &rfun, N_FUN, addr);
+
+	if (lfun <= rfun) {
+		// stabs[lfun] points to the function name
+		// in the string table, but check bounds just in case.
+		if (stabs[lfun].n_strx < stabstr_end - stabstr)
+			info->eip_fn_name = stabstr + stabs[lfun].n_strx;
+		info->eip_fn_addr = stabs[lfun].n_value;
+		addr -= info->eip_fn_addr;
+		// Search within the function definition for the line number.
+		lline = lfun;
+		rline = rfun;
+	} else {
+		// Couldn't find function stab!  Maybe we're in an assembly
+		// file.  Search the whole file for the line number.
+		info->eip_fn_addr = addr;
+		lline = lfile;
+		rline = rfile;
+	}
+	// Ignore stuff after the colon.
+	info->eip_fn_namelen = strfind(info->eip_fn_name, ':') - info->eip_fn_name;
+
+
+	// 给定边界[lline, rline] 
+	// 找到之后， info->eip_line 赋值为rline代码块的行数
+	// 失败返回-1
+	//
+	// Hint:
+	//	对于代码行数，stab已经有特定的字段保存，你只要给addr参数即可，不需要再计算
+	//	从<inc/stab.h>找stab定义
+	// 我的代码
+	stab_binsearch(stabs, &lline, &rline, N_SLINE, addr);//代码行数
+	if (lline <= rline) {
+    	info->eip_line = stabs[rline].n_desc;
+	} else {
+ 	   return -1;
+	}
+
+	// Search backwards from the line number for the relevant filename
+	// stab.
+	// We can't just use the "lfile" stab because inlined functions
+	// can interpolate code from a different file!
+	// Such included source files use the N_SOL stab type.
+	while (lline >= lfile
+	       && stabs[lline].n_type != N_SOL
+	       && (stabs[lline].n_type != N_SO || !stabs[lline].n_value))
+		lline--;
+	if (lline >= lfile && stabs[lline].n_strx < stabstr_end - stabstr)
+		info->eip_file = stabstr + stabs[lline].n_strx;
+
+
+	// Set eip_fn_narg to the number of arguments taken by the function,
+	// or 0 if there was no containing function.
+	if (lfun < rfun)
+		for (lline = lfun + 1;
+		     lline < rfun && stabs[lline].n_type == N_PSYM;
+		     lline++)
+			info->eip_fn_narg++;
+
+	return 0;
 }
 ```
 
