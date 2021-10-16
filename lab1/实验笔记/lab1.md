@@ -266,13 +266,9 @@ bios通过读取bootsector进入内存，从0x7c00-0x7dff.当然，现在不止�
 
 ### Exercise7
 
-1.  在内核kern/entry.S代码movl %eax, %cr0处设置断点，看看内存0x00100000 和0xf0100000
+1.  在内核kern/kernel.asm代码movl %eax, %cr0处设置断点，看看内存0x00100000 和0xf0100000
 2.  单步执行，然后再看这两个内存，理解这其中的变化
 3.  如果分页机制的映射错了，那么第一行错的指令是什么，看看源代码文件，找出来
-
-
-
-
 
 **控制台的格式化输出**
 
@@ -284,7 +280,7 @@ C语言里有print（）格式化输出，同样I/O也有，它叫cprintf，阅�
 
 ### Exercise8
 
-1.  在cprintf（）方法里我们省略了一小段代码：使用“%o”来打印八进制，请你实现这部分
+1.  在cprintf（）方法里我们省略了一小段代码：使用“%o”来打印八进制，
 
 回答以下问题：
 
@@ -309,7 +305,7 @@ C语言里有print（）格式化输出，同样I/O也有，它叫cprintf，阅�
 
     *   列出每个对于cons_putc, va_arg, 和vcprintf的调用
 
-    *   sons_putc:列出形参
+    *   cons_putc:列出形参
 
     *   va_arg:说出ap之前指向与调用之后的指向
 
@@ -470,6 +466,117 @@ C语言里有print（）格式化输出，同样I/O也有，它叫cprintf，阅�
     刚进入boot时候BIOS上的地址没动过，此时从0x7c00开始boot会通过设置的保护模式将内核代码加载入内存，这时候高地址才会被修改，紧接着进入内核代码。
 
 ### Exercise7
+
+1.![](https://tva1.sinaimg.cn/large/008i3skNly1gvgz3gjgpfj612g05qdh002.jpg)
+
+2.单步执行后
+
+![](https://tva1.sinaimg.cn/large/008i3skNly1gvgz4ywqwdj612y068myj02.jpg)
+
+可以发现映射相同
+
+问题：为什么？
+
+A：对于GDB而言，在我们模拟的qemu里，内核代码加载的地址应该是物理地址，而用户代码加载的地址应该是虚拟地址。不过我们写的内核ELF都是按照用户代码给的高地址，应该稍微处理一下映射。
+
+之前做的kernbase消除这一问题，等于做了个“假页表”，而题目给出的汇编代码即开启页表，开启之后的映射应该是准确映射物理地址，即“高地址映射到高地址”
+
+3.关键代码即题目所给代码，如果注释，假页表映射有限，会出现访问越界问题
+
+### Exercise8
+
+1. 查看关键文件注释
+
+2. console.c
+
+```
+if (crt_pos >= CRT_SIZE) {
+        int i;
+        memcpy(crt_buf, crt_buf + CRT_COLS, (CRT_SIZE - CRT_COLS) * sizeof(uint16_t));
+        for (i = CRT_SIZE - CRT_COLS; i < CRT_SIZE; i++)
+                crt_buf[i] = 0x0700 | ' ';
+        crt_pos -= CRT_COLS;
+ }
+* 变量
+crt_pos      CRT_SIZE    CRT_COLS          crt_buf
+尾字符位置    页char大小    字符列数         字符buf
+
+* 函数
+memcpy 内存复制
+
+* 过程
+如果发现尾字符位置超过一页位置，就应该讲这一页向上一行进行复制，然后清空这腾出来的一行，然后修改尾字符位置向上一行
+```
+
+3. ```
+   int x = 1, y = 3, z = 4;
+   cprintf("x %d, y %x, z %d\n", x, y, z);
+   
+   * 调用cprintf，fmt什么内容，ap什么内容
+   "x %d, y %x, z %d\n"，ap为va_list，即所有参数列表，包括了xyz
+   
+   * 按照执行的顺序列出所有对cons_putc, va_arg，和vcprintf的调用
+   看注释
+   
+   * 列出每个对于cons_putc, va_arg, 和vcprintf的调用
+   看注释
+   
+   * cons_putc:列出形参
+   int c
+   
+   * va_arg:说出ap之前指向与调用之后的指向
+   ap:1,3,4=>3,4
+   
+   * vcprintf:列出两个实参
+   "x %d, y %x, z %d\n"  1,3,4
+   ```
+
+4. ```
+       unsigned int i = 0x00646c72;
+           cprintf("H%x Wo%s", 57616, &i);
+   
+   *   输出是什么
+   He110 World
+   
+   *   单步执行解释输出的由来，有个[ASCII表](http://web.cs.mun.ca/\~michael/c/ascii-table.html)供你参考
+   1.第一个参数的值是57616，它对应的16进制的表示形式为e110，所以前面就变成的He110。
+   2.输出参数所指向的字符串,变量i代表字符串。但是i定义为int，所以我们按字节分析出char
+   3.x86是小端模式，高字节放在高地址。所以存放顺序0x72('r')，0x6c('l')，0x64('d')，0x00('\0').
+   5.所以在cprintf将会从i的地址开始一个字节一个字节遍历，正好输出 "World"
+   
+   *   本次假设为小端，如果是大端你该怎么更改i的值？
+   i = 0x726c6400
+   ```
+
+5. 对于以下代码
+
+       cprintf("x=%d y=%d", 3);
+       
+       * “y=”之后应该输出什么（提示：不唯一）？为什么会这样？
+       getint调用va_arg时候，取，更改参数因为没有指定y，所以参数下标越界
+
+6. ```
+   假设GCC改变调用约定（栈增长变为低地址->高地址），在（参数）声明顺序下堆栈传参，你要怎么改cprintf（）或者它的接口，来成功传参数？
+   形参反序
+   ```
+
+### Exercise9
+
+1. 
+
+
+
+### Exercise10
+
+
+
+### Exercise11
+
+
+
+### Exercise12
+
+
 
 ## 关键文件注释
 
@@ -763,7 +870,7 @@ main(int ac, char **av)
 static void
 putch(int ch, int *cnt)//3.调用cputchar
 {
-	cputchar(ch);
+	cputchar(ch);//内核态向控制台输出
 	*cnt++;
 }
 
@@ -772,18 +879,18 @@ vcprintf(const char *fmt, va_list ap)//2.调用vprintfmt，输入putch返回值�
 {
 	int cnt = 0;
 
-	vprintfmt((void*)putch, &cnt, fmt, ap);
+	vprintfmt((void*)putch, &cnt, fmt, ap);//四个参数：1.函数指针2.计数3.格式4.参数列表
 	return cnt;
 }
 
 int
 cprintf(const char *fmt, ...)//1.调用cprintf
 {
-	va_list ap;
+	va_list ap;//参数列表
 	int cnt;
 
-	va_start(ap, fmt);
-	cnt = vcprintf(fmt, ap);
+	va_start(ap, fmt);//把xyz这样的参数使用ap指向
+	cnt = vcprintf(fmt, ap);//传入格式，参数列表
 	va_end(ap);
 
 	return cnt;
@@ -794,7 +901,7 @@ cprintf(const char *fmt, ...)//1.调用cprintf
 ### lib/printfmt.c
 
 ```
-// 自定义输出格式
+// 分析输出格式：词法分析的感觉，根据格式要求来决定参数的合法判定，输出格式
 // 常见于printf, sprintf, fprintf, etc.
 // 内核态和用户态都有调用
 
@@ -860,20 +967,20 @@ getuint(va_list *ap, int lflag)
 
 // Same as getuint but signed - can't use getuint
 // because of sign extension
-static long long
-getint(va_list *ap, int lflag)
+static long long//被调用，来解决诸如%d匹配参数的问题，隐性进行合法判定
+getint(va_list *ap, int lflag)//ap:1,3,4
 {
 	if (lflag >= 2)
-		return va_arg(*ap, long long);
+		return va_arg(*ap, long long);//ap:3,4
 	else if (lflag)
-		return va_arg(*ap, long);
+		return va_arg(*ap, long);//ap:4
 	else
-		return va_arg(*ap, int);
+		return va_arg(*ap, int);//ap:null
 }
 
 
-// Main function to format and print a string.
-void printfmt(void (*putch)(int, void*), void *putdat, const char *fmt, ...);
+// 格式化，并且调用putchar输出字符串
+void printfmt(void (*putch)(int, void*), void *putdat, const char *fmt, ...);//参数：putch,&cnt,fmt,ap
 
 void
 vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
@@ -885,6 +992,7 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 	char padc;
 
 	while (1) {
+	//逐字符分析fmt：根据%后的字符决定参数，将ap参数逐步加入划分中，题例划分："x %d, y %x, z %d\n", 1, 3, 4 => "x %d:1, y %x:2, z %d:3" "\n"四个部分
 		while ((ch = *(unsigned char *) fmt++) != '%') {
 			if (ch == '\0')
 				return;
@@ -1100,7 +1208,7 @@ snprintf(char *buf, int n, const char *fmt, ...)
 
 ```
 /* See COPYRIGHT for copyright information. */
-//控制台的IO处理逻辑
+//控制台的IO处理逻辑：I，O，控制台
 
 #include <inc/x86.h>
 #include <inc/memlayout.h>
@@ -1113,7 +1221,7 @@ snprintf(char *buf, int n, const char *fmt, ...)
 static void cons_intr(int (*proc)(void));
 static void cons_putc(int c);
 
-// Stupid I/O delay routine necessitated by historical PC design flaws
+// PC设计历史原因，只是单纯的IO等待
 static void
 delay(void)
 {
@@ -1123,7 +1231,7 @@ delay(void)
 	inb(0x84);
 }
 
-/***** Serial I/O code *****/
+/***** IO代码 *****/
 
 #define COM1		0x3F8
 
@@ -1206,7 +1314,7 @@ serial_init(void)
 
 
 
-/***** Parallel port output code *****/
+/***** 并行端口输出代码 *****/
 // For information on PC parallel port programming, see the class References
 // page.
 
@@ -1225,7 +1333,7 @@ lpt_putc(int c)
 
 
 
-/***** Text-mode CGA/VGA display output *****/
+/***** 以文字形式向 CGA/VGA 显示输出 *****/
 
 static unsigned addr_6845;
 static uint16_t *crt_buf;
@@ -1311,7 +1419,7 @@ cga_putc(int c)
 }
 
 
-/***** Keyboard input code *****/
+/***** 键盘输入处理 *****/
 
 #define NO		0
 
@@ -1411,8 +1519,8 @@ static uint8_t *charcode[4] = {
 };
 
 /*
- * Get data from the keyboard.  If we finish a character, return it.  Else 0.
- * Return -1 if no data.
+ * 从键盘获取单个字符，如果成功，返回，如果没有，返回0.
+ * 无数据返回-1.
  */
 static int
 kbd_proc_data(void)
@@ -1479,7 +1587,7 @@ kbd_init(void)
 
 
 
-/***** General device-independent console code *****/
+/***** 设备无关的控制台代码 *****/
 // Here we manage the console input buffer,
 // where we stash characters received from the keyboard or serial port
 // whenever the corresponding interrupt occurs.
