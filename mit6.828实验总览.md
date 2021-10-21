@@ -28,17 +28,17 @@ https://www.bilibili.com/video/BV19k4y1C7kA?from=search&seid=1426687996615846498
    - [xv6书](https://pdos.csail.mit.edu/6.828/2017/xv6/book-rev10.pdf)：这本书从头到尾都用得到，根据进度看
    - [Unix系统视频](https://www.youtube.com/watch?v=tc4ROCJYbm0)
    - 阅读《C程序语言设计》2.9/5.1/5.5/6.4章节
-   - 指针作业（见本文件夹下）
+   - 指针作业（见lab1文件夹下）
    - [ppt关于硬件和x86](https://pdos.csail.mit.edu/6.828/2017/lec/l-x86.pdf)
    - [第二节课笔记：PC结构](https://pdos.csail.mit.edu/6.828/2017/lec/l-x86.html)
    - [第三节课笔记：gdb使用](https://pdos.csail.mit.edu/6.828/2017/lec/gdb_slides.pdf)
 2. 实验2
    - [第四节课笔记：shell和os结构](https://pdos.csail.mit.edu/6.828/2017/lec/l-shell.txt)
-   - [shell](https://pdos.csail.mit.edu/6.828/2017/homework/xv6-shell.html)
-   - [第五节课笔记：隔离（？）](https://pdos.csail.mit.edu/6.828/2017/lec/l-internal.txt)
-   - [系统调用](https://pdos.csail.mit.edu/6.828/2017/homework/xv6-syscall.html)
+   - [作业：shell](https://pdos.csail.mit.edu/6.828/2017/homework/xv6-shell.html)
+   - [第五节课笔记：资源隔离](https://pdos.csail.mit.edu/6.828/2017/lec/l-internal.txt)
+   - [作业：系统调用](https://pdos.csail.mit.edu/6.828/2017/homework/xv6-syscall.html)
    - [第六节课笔记：虚拟内存](https://pdos.csail.mit.edu/6.828/2017/lec/l-vm.md)
-   - [分页和寄存器](https://pdos.csail.mit.edu/6.828/2017/lec/x86_translation_and_registers.pdf)
+   - [分页和寄存器ppt](https://pdos.csail.mit.edu/6.828/2017/lec/x86_translation_and_registers.pdf)
    - [第六节课幻灯片](https://pdos.csail.mit.edu/6.828/2017/lec/l-vm.pdf)
    - [作业：写时复制](https://pdos.csail.mit.edu/6.828/2017/homework/xv6-zero-fill.html)
    - [第七节课笔记：使用虚拟内存](https://pdos.csail.mit.edu/6.828/2017/lec/l-usevm.md)
