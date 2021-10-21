@@ -101,18 +101,18 @@ runcmd(struct cmd *cmd)
 
     int f1 = fork1();
     int f2 = fork1();
-    wait();//wait for child process first
-    if(f1 == 0){//left to write from the buf
+    wait(NULL);//wait for child process first
+    if(f1 == 0){
       close(1);
       dup(p[1]);
       close(p[0]);
-      close(p[1]);//p is useless, and 1 is the only fd ,also as standard output now
+      close(p[1]);//p is useless, and 1  as standard output now
       runcmd(pcmd->left);
-    }else if(f2 == 0){//right to read from the buf
+    }else if(f2 == 0){
       close(0);
       dup(p[0]);
       close(p[0]);
-      close(p[1]); //p is useless, 0 is the only fd ,also as standard input now
+      close(p[1]); //p is useless, 0  as standard input now
       runcmd(pcmd->right);
     }
 
