@@ -2,13 +2,11 @@
 
 https://pdos.csail.mit.edu/6.828/2017/schedule.html
 
-注：lab之间的材料和作业针对上一个lab
-
 b站视频
 
 https://www.bilibili.com/video/BV19k4y1C7kA?from=search&seid=14266879966158464981&spm_id_from=333.337.0.0
 
-个人安排：讲义--视频--材料--实验--回顾笔记--循环
+个人安排：书--讲义--视频--材料--实验--回顾笔记--循环
 
 ## 实验
 
@@ -18,9 +16,10 @@ https://www.bilibili.com/video/BV19k4y1C7kA?from=search&seid=1426687996615846498
 4. 进程调度
 5. 文件系统，IO和shell
 6. 网络
-7. 最终项目
 
 ## 材料和讲义
+
+注：每个实验材料讲义可能会涉及一点点下一实验的内容
 
 1. 实验1
    - [第一节课笔记：总览](https://pdos.csail.mit.edu/6.828/2017/lec/l-overview.txt)
@@ -34,21 +33,25 @@ https://www.bilibili.com/video/BV19k4y1C7kA?from=search&seid=1426687996615846498
    - [第三节课笔记：gdb使用](https://pdos.csail.mit.edu/6.828/2017/lec/gdb_slides.pdf)
 2. 实验2
    - [第四节课笔记：shell和os结构](https://pdos.csail.mit.edu/6.828/2017/lec/l-shell.txt)
-   - [作业：shell](https://pdos.csail.mit.edu/6.828/2017/homework/xv6-shell.html)
    - [第五节课笔记：资源隔离](https://pdos.csail.mit.edu/6.828/2017/lec/l-internal.txt)
-   - [作业：系统调用](https://pdos.csail.mit.edu/6.828/2017/homework/xv6-syscall.html)
    - [第六节课笔记：虚拟内存](https://pdos.csail.mit.edu/6.828/2017/lec/l-vm.md)
    - [分页和寄存器ppt](https://pdos.csail.mit.edu/6.828/2017/lec/x86_translation_and_registers.pdf)
    - [第六节课幻灯片](https://pdos.csail.mit.edu/6.828/2017/lec/l-vm.pdf)
-   - [作业：写时复制](https://pdos.csail.mit.edu/6.828/2017/homework/xv6-zero-fill.html)
    - [第七节课笔记：使用虚拟内存](https://pdos.csail.mit.edu/6.828/2017/lec/l-usevm.md)
-   - [第七节课讲义](https://pdos.csail.mit.edu/6.828/2017/lec/l-josmem.html)
-   - [第七节课ppt](https://pdos.csail.mit.edu/6.828/2017/lec/l-usingvm.pdf)
-   - [中断作业：CPU警报](https://pdos.csail.mit.edu/6.828/2017/homework/xv6-alarm.html)
+   - [JOS虚拟内存布局](https://pdos.csail.mit.edu/6.828/2017/lec/l-josmem.html)
 3. 实验3
+   - [第七节课笔记：使用虚拟内存](https://pdos.csail.mit.edu/6.828/2017/lec/l-josmem.html)
+   - [第七节课ppt](https://pdos.csail.mit.edu/6.828/2017/lec/l-usingvm.pdf)
    - [第八节课笔记：系统调用，中断，异常](https://pdos.csail.mit.edu/6.828/2017/lec/l-interrupt.txt)
-   - [第八节课讲义：IDT](https://pdos.csail.mit.edu/6.828/2017/lec/x86_idt.pdf)
-   - [作业：多线程编程](https://pdos.csail.mit.edu/6.828/2017/homework/lock.html)
+   - [第八节课笔记：IDT](https://pdos.csail.mit.edu/6.828/2017/lec/x86_idt.pdf)
+   - [陷阱，中断和驱动的xv6源文件](https://pdos.csail.mit.edu/6.828/2017/xv6/book-rev10.pdf)
+4. 实验4
+
    - [第九节课笔记：多进程和锁](https://pdos.csail.mit.edu/6.828/2017/lec/l-lockv2.txt)
-   - 。。。
+   - [锁](https://pdos.csail.mit.edu/6.828/2017/xv6/book-rev10.pdf)
+   - [第十节课笔记：进程和切换](https://pdos.csail.mit.edu/6.828/2017/lec/l-threads.txt)
+   - [进程调度](https://pdos.csail.mit.edu/6.828/2017/xv6/book-rev10.pdf)
+   - [第十一节课笔记：睡眠和唤醒](https://pdos.csail.mit.edu/6.828/2017/lec/l-coordination.txt)
+5. 实验5
+   - [文件系统](https://pdos.csail.mit.edu/6.828/2017/lec/l-fs.txt)
 
