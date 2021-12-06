@@ -26,29 +26,25 @@ https://pdos.csail.mit.edu/6.828/2017/labs/lab5/
 
 实验室这部分的主要新组件是文件系统环境，位于新的`fs`目录中。浏览此目录中的所有文件以了解所有新内容。此外，在`user`和`lib`目录中有一些新的文件系统相关的源文件，
 
-| `fs/fs.c`        | mainipulates 文件系统的磁盘结构的代码。                  |
-| ---------------- | -------------------------------------------------------- |
-| `fs/bc.c`        | 一个简单的块缓存建立在我们的用户级页面错误处理设施之上。 |
-| `文件系统/ide.c` | 最小的基于 PIO（非中断驱动）的 IDE 驱动程序代码。        |
-| `fs/serv.c`      | 使用文件系统 IPC 与客户端环境交互的文件系统服务器。      |
-| `库/fd.c`        | 实现通用类 UNIX 文件描述符接口的代码。                   |
-| `库/文件.c`      | 磁盘文件类型的驱动程序，作为文件系统 IPC 客户端实现。    |
-| `库/控制台.c`    | 控制台输入/输出文件类型的驱动程序。                      |
-| `库/ spawn.c`    | `spawn`库调用的代码框架。                                |
+| `fs/fs.c`       | mainipulates 文件系统的磁盘结构的代码。                  |
+| --------------- | -------------------------------------------------------- |
+| `fs/bc.c`       | 一个简单的块缓存建立在我们的用户级页面错误处理设施之上。 |
+| `fs/ide.c`      | 最小的基于 PIO（非中断驱动）的 IDE 驱动程序代码。        |
+| `fs/serv.c`     | 使用文件系统 IPC 与客户端环境交互的文件系统服务器。      |
+| `lib/fd.c`      | 实现通用类 UNIX 文件描述符接口的代码。                   |
+| `lib/file.c`    | 磁盘文件类型的驱动程序，作为文件系统 IPC 客户端实现。    |
+| `lib/console.c` | 控制台输入/输出文件类型的驱动程序。                      |
+| `lib/ spawn.c`  | `spawn`库调用的代码框架。                                |
 
-在合并新的实验 5 代码后，您应该再次运行实验 4 中的 pingpong、primes 和 forktree 测试用例。您将需要注释掉`kern/init.c 中`的`ENV_CREATE(fs_fs)`行， 因为`fs/fs.c`尝试执行一些 JOS 还不允许的 I/O。同样，暂时注释掉调用中 `的lib / exit.c中`; 此函数调用您将在实验室稍后实现的子例程，因此如果调用它会发生恐慌。如果您的实验室 4 代码不包含任何错误，则测试用例应该可以正常运行。在他们工作之前不要继续。开始练习 1 时，不要忘记取消注释这些行。 `````close_all()```
+在合并新的实验 5 代码后，您应该再次运行实验 4 中的 pingpong、primes 和 forktree 测试用例。您将需要注释掉`kern/init.c 中`的`ENV_CREATE(fs_fs)`行， 因为`fs/fs.c`尝试执行一些 JOS 还不允许的 I/O。同样，暂时注释掉调用中 `的lib / exit.c中` close_all(); 此函数调用您将在实验室稍后实现的子例程，因此如果调用它会发生恐慌。如果您的实验室 4 代码不包含任何错误，则测试用例应该可以正常运行。在他们工作之前不要继续。开始练习 1 时，不要忘记取消注释这些行。
 
 如果它们不起作用，请使用 git diff lab4检查所有更改，确保没有您为 lab4（或之前）编写的任何代码在 lab 5 中丢失。确保 lab 4 仍然有效。
-
-### 实验室要求
-
-和以前一样，您需要完成实验室中描述的所有常规练习和*至少一个*挑战题。此外，您需要写下对实验室中提出的问题的简短回答，并简短（例如，一段或两段）描述您为解决所选挑战问题所做的工作。如果你实现了多个挑战问题，你只需要在文章中描述其中一个，当然欢迎你做更多。在提交您的工作之前，将`撰写`的内容放在`lab5`目录顶层的名为`answers-lab5.txt`的文件中。``
 
 # 文件系统预习
 
 您将使用的文件系统比包括 xv6 UNIX 在内的大多数“真实”文件系统要简单得多，但它的功能强大到足以提供基本功能：创建、读取、写入和删除以分层目录结构组织的文件。
 
-我们（无论如何）目前只开发一个单用户操作系统，它提供的保护足以捕获错误，但不能保护多个相互可疑的用户相互隔离。因此，我们的文件系统不支持文件所有权或权限的 UNIX 概念。我们的文件系统目前也不像大多数 UNIX 文件系统那样支持硬链接、符号链接、时间戳或特殊设备文件。
+我们（无论如何）目前只开发一个单用户操作系统，它提供的保护足以捕获错误，但不能保护多个相互可疑的用户相互隔离。因此，我们的文件系统不支持文件所有权或权限的 UNIX 概念**。我们的文件系统目前也不像大多数 UNIX 文件系统那样支持硬链接、符号链接、时间戳或特殊设备文件。**
 
 ## 磁盘文件系统结构
 
@@ -90,17 +86,19 @@ UNIX xv6 文件系统使用 512 字节的块大小，与底层磁盘的扇区大
 
 # 文件系统
 
-本实验的目标不是让您实现整个文件系统，而是让您只实现某些关键组件。特别是，您将负责将块读入块缓存并将它们刷新回磁盘；分配磁盘块；将文件偏移量映射到磁盘块；并在IPC接口中实现读、写和打开。因为您不会自己实现所有的文件系统，所以熟悉所提供的代码和各种文件系统接口非常重要。
+本实验的目标不是让您实现整个文件系统，而是让您只实现某些关键组件。特别是，**您将负责将块读入块缓存并将它们刷新回磁盘；分配磁盘块；将文件偏移量映射到磁盘块；并在IPC接口中实现读、写和打开。**因为您不会自己实现所有的文件系统，所以熟悉所提供的代码和各种文件系统接口非常重要。
 
 ## 磁盘访问
 
-我们操作系统中的文件系统环境需要能够访问磁盘，但是我们还没有在我们的内核中实现任何磁盘访问功能。我们没有采用传统的“单体”操作系统策略，即向内核添加 IDE 磁盘驱动程序以及必要的系统调用以允许文件系统访问它，而是将 IDE 磁盘驱动程序实现为用户级文件的一部分系统环境。我们仍然需要稍微修改内核，以便进行设置，以便文件系统环境具有实现磁盘访问本身所需的权限。
+我们操作系统中的文件系统环境需要能够访问磁盘，但是我们还没有在我们的内核中实现任何磁盘访问功能。我们没有采用传统的“单体”操作系统策略，即向内核添加 **IDE 磁盘驱动程序**以及必要的系统调用以允许文件系统访问它，而是将 IDE 磁盘驱动程序实现为用户级文件的一部分系统环境。我们仍然需要稍微修改内核，以便进行设置，以便文件系统环境具有实现磁盘访问本身所需的权限。
 
 只要我们依靠轮询、基于“程序化 I/O”(PIO) 的磁盘访问并且不使用磁盘中断，就很容易以这种方式在用户空间中实现磁盘访问。也可以在用户模式下实现中断驱动的设备驱动程序（例如，L3 和 L4 内核执行此操作），但由于内核必须现场设备中断并将它们分派到正确的用户模式环境，因此更加困难.
 
 x86 处理器使用 EFLAGS 寄存器中的 IOPL 位来确定是否允许保护模式代码执行特殊的设备 I/O 指令，例如 IN 和 OUT 指令。由于我们需要访问的所有 IDE 磁盘寄存器都位于 x86 的 I/O 空间中而不是内存映射，因此我们唯一需要为文件系统环境提供“I/O 特权”允许文件系统访问这些寄存器。实际上，EFLAGS 寄存器中的 IOPL 位为内核提供了一种简单的“全有或全无”方法来控制用户模式代码是否可以访问 I/O 空间。在我们的例子中，我们希望文件系统环境能够访问 I/O 空间，但我们根本不希望任何其他环境能够访问 I/O 空间。
 
-**练习 1.** `i386_init`通过将类型传递`ENV_TYPE_FS`给您的环境创建函数来识别文件系统环境`env_create`。`env_create`在`env.c 中进行`修改，使其赋予文件系统环境 I/O 特权，但永远不会将该特权赋予任何其他环境。
+## **练习 1.** 
+
+`i386_init`通过将类型传递`ENV_TYPE_FS`给您的环境创建函数来识别文件系统环境`env_create`。`env_create`在`env.c 中进行`修改，使其赋予文件系统环境 I/O 特权，但永远不会将该特权赋予任何其他环境。
 
 确保您可以启动文件环境而不会导致常规保护错误。您应该通过make grade.
 
@@ -136,7 +134,9 @@ $make
 
 当然，将整个磁盘读入内存需要很长时间，所以我们将实现一种形式的*需求分页*，我们只在磁盘映射区域分配页面，并从磁盘中读取相应的块响应此区域中的页面错误。这样，我们就可以假装整个磁盘都在内存中。
 
-**练习 2.** 实现`fs/bc.c 中`的`bc_pgfault`和`flush_block` 函数。 是一个页面错误处理程序，就像您在上一个实验室中为写时复制 fork 编写的处理程序一样，除了它的工作是从磁盘加载页面以响应页面错误。编写此内容时，请记住 (1) 可能不会与块边界对齐，并且 (2) 在扇区中操作，而不是在块中操作。 ```bc_pgfault``addr``ide_read`
+## **练习 2.** 
+
+实现`fs/bc.c 中`的`bc_pgfault`和`flush_block` 函数。 是一个页面错误处理程序，就像您在上一个实验室中为写时复制 fork 编写的处理程序一样，除了它的工作是从磁盘加载页面以响应页面错误。编写此内容时，请记住 (1) 可能不会与块边界对齐，并且 (2) 在扇区中操作，而不是在块中操作。 ```bc_pgfault``addr``ide_read`
 
 *如有必要，* 该`flush_block`函数应将块写入磁盘 。 如果块甚至不在块缓存中（即页面未映射）或者它不脏，则不应执行任何操作。我们将使用 VM 硬件来跟踪磁盘块自上次从磁盘读取或写入磁盘后是否已被修改。要查看块是否需要写入，我们可以查看条目中是否设置了“脏”位。（该位由处理器设置以响应对该页的写入；请参阅386 参考手册[第 5 章](http://pdos.csail.mit.edu/6.828/2011/readings/i386/s05_02.htm)中的5.2.4.3 。）将块写入磁盘后，应使用清除该位。 `flush_block``PTE_D``uvpt``PTE_D``flush_block``PTE_D``sys_page_map`
 
@@ -152,7 +152,9 @@ fs/fs.c 中` 的`fs_init`函数是如何使用块缓存的主要示例。初始�
 
 后`fs_init`套`bitmap`指针，我们可以把`bitmap`称为比特的填充阵列，一个用于在磁盘上的每个块。例如，参见 ，`block_is_free`它只是检查给定块在位图中是否标记为空闲。
 
-**练习3.** 使用`free_block`作为一种模式来实现`alloc_block`的`FS / fs.c`，应在该位图找到一个免费的磁盘块，将其标记使用，并返回该块的数量。分配块时，应立即使用 将更改的位图块刷新到磁盘`flush_block`，以帮助文件系统一致性。
+## **练习3.** 
+
+使用`free_block`作为一种模式来实现`alloc_block`的`FS / fs.c`，应在该位图找到一个免费的磁盘块，将其标记使用，并返回该块的数量。分配块时，应立即使用 将更改的位图块刷新到磁盘`flush_block`，以帮助文件系统一致性。
 
 使用make grade来测试你的代码。您的代码现在应该通过“alloc_block”。
 
@@ -160,7 +162,9 @@ fs/fs.c 中` 的`fs_init`函数是如何使用块缓存的主要示例。初始�
 
 我们在`fs/fs.c 中`提供了多种函数 来实现解释和管理`File`结构、扫描和管理目录文件的条目以及从根遍历文件系统以解析绝对路径名所需的基本工具. 通读`fs/fs.c 中的`*所有*代码， 并确保在继续之前了解每个函数的作用。``
 
-**练习 4.** 实施 `file_block_walk` 和`file_get_block`。 `file_block_walk`从文件中的块偏移量映射到该块`struct File`或间接块中该块的指针， `pgdir_walk`与页表所做的非常相似 。 `file_get_block`更进一步，映射到实际的磁盘块，必要时分配一个新的。
+## **练习 4.** 
+
+实施 `file_block_walk` 和`file_get_block`。 `file_block_walk`从文件中的块偏移量映射到该块`struct File`或间接块中该块的指针， `pgdir_walk`与页表所做的非常相似 。 `file_get_block`更进一步，映射到实际的磁盘块，必要时分配一个新的。
 
 使用make grade来测试你的代码。您的代码应该通过“file_open”、“file_get_block”、“file_flush/file_truncated/file rewrite”和“testfile”。
 
@@ -173,7 +177,25 @@ fs/fs.c 中` 的`fs_init`函数是如何使用块缓存的主要示例。初始�
 现在我们在文件系统环境中拥有了必要的功能，我们必须让其他希望使用文件系统的环境可以访问它。由于其他环境无法直接调用文件系统环境中的函数，我们将通过构建在 JOS 的 IPC 机制之上的*远程过程调用*或 RPC 抽象公开对文件系统环境的访问。从图形上看，这是对文件系统服务器的调用（例如，读取）的样子
 
 ```
-      常规环境 FS 环境   +--------------+ +--------------+   | 阅读 | | 文件读取|   | (lib/fd.c) | | (fs/fs.c) | ...|.......|.......|...|.......^.......|......... .....   | v | | | | RPC机制   | devfile_read | | 服务阅读|   | (lib/file.c) | | (fs/serv.c) |   | | | | ^ |   | v | | | |   | fsipc | | 服务 |   | (lib/file.c) | | (fs/serv.c) |   | | | | ^ |   | v | | | |   | ipc_send | | ipc_recv |   | | | | ^ |   +-------|-------+ +-------|-------+           | |           +--------------------+ 
+            Regular env           FS env
+   +---------------+   +---------------+
+   |      read     |   |   file_read   |
+   |   (lib/fd.c)  |   |   (fs/fs.c)   |
+...|.......|.......|...|.......^.......|...............
+   |       v       |   |       |       | RPC mechanism
+   |  devfile_read |   |  serve_read   |
+   |  (lib/file.c) |   |  (fs/serv.c)  |
+   |       |       |   |       ^       |
+   |       v       |   |       |       |
+   |     fsipc     |   |     serve     |
+   |  (lib/file.c) |   |  (fs/serv.c)  |
+   |       |       |   |       ^       |
+   |       v       |   |       |       |
+   |   ipc_send    |   |   ipc_recv    |
+   |       |       |   |       ^       |
+   +-------|-------+   +-------|-------+
+           |                   |
+           +-------------------+
 ```
 
 虚线下方的所有内容只是从常规环境到文件系统环境获取读取请求的机制。从一开始，`read`（我们提供的）适用于任何文件描述符，并简单地分派到适当的设备读取函数，在这种情况下 `devfile_read`（我们可以有更多的设备类型，如管道）。 `devfile_read` 工具`read`专门针对磁盘上的文件。这个`devfile_*`函数和`lib/file.c 中`的其他函数 实现了 FS 操作的客户端，并且都以大致相同的方式工作，将参数捆绑在一个请求结构中，调用 `fsipc`发送 IPC 请求，解包并返回结果。这`fsipc` 函数只是处理向服务器发送请求和接收回复的常见细节。
@@ -184,25 +206,31 @@ fs/fs.c 中` 的`fs_init`函数是如何使用块缓存的主要示例。初始�
 
 服务器还通过 IPC 发回响应。我们使用 32 位数字作为函数的返回码。对于大多数 RPC，这就是它们返回的全部内容。 `FSREQ_READ`并`FSREQ_STAT`返回数据，它们只是将数据写入客户端发送请求的页面。不需要在响应 IPC 中发送此页面，因为客户端首先与文件系统服务器共享它。此外，在其响应中，`FSREQ_OPEN`与客户端共享一个新的“Fd 页面”。我们将很快返回到文件描述符页面。
 
-**练习5** 实现`serve_read`在`FS / serv.c`。
+## **练习5** 
+
+实现`serve_read`在`FS / serv.c`。
 
 `serve_read`的繁重工作将由已经`file_read`在`fs/fs.c 中实现的` （反过来，它只是一堆对 的调用 `file_get_block`）来完成。 `serve_read`只需要提供用于文件读取的RPC接口。查看注释和代码`serve_set_size`以大致了解服务器功能的结构。
 
 使用make grade来测试你的代码。您的代码应通过“serve_open/file_stat/file_close”和“file_read”以获得 70/150 的分数。
 
-**练习6.** 实现`serve_write`在`FS / serv.c`和 `devfile_write`在`LIB / file.c`。
+## **练习6.** 
+
+实现`serve_write`在`FS / serv.c`和 `devfile_write`在`LIB / file.c`。
 
 使用make grade来测试你的代码。您的代码应该通过“file_write”、“file_read after file_write”、“open”和“large file”以获得 90/150 的分数。
 
-# 产卵过程
+# 创建子进程过程
 
 我们已经为您提供了`spawn`（参见`lib/spawn.c`） 的代码， 它创建一个新环境，将文件系统中的程序映像加载到其中，然后启动运行该程序的子环境。然后父进程独立于子进程继续运行。该`spawn`函数的作用类似于`fork`UNIX 中的 a 后跟`exec`子进程中的立即数。
 
-我们实现`spawn`而不是 UNIX 风格，`exec`因为`spawn`更容易以“外内核方式”从用户空间实现，无需内核的特殊帮助。想想为了`exec`在用户空间中实现你必须做什么，并确保你明白为什么它更难。
+我们实现`spawn`并不是以 UNIX 风格，`exec`因为`spawn`更容易以“外内核方式”从用户空间实现，无需内核的特殊帮助。想想为了`exec`在用户空间中实现你必须做什么，并确保你明白为什么它更难。
 
-**练习 7.** `spawn`依靠新的系统调用 `sys_env_set_trapframe`来初始化新创建环境的状态。`sys_env_set_trapframe`在`kern/syscall.c 中`实现 （不要忘记在 中调度新的系统调用`syscall()`）。
+## **练习 7.**
 
-通过运行`kern/init.c 中`的`user/spawnhello`程序来测试您的代码，该 程序将尝试从文件系统中生成`/hello`。````
+ `spawn`依靠新的系统调用 `sys_env_set_trapframe`来初始化新创建环境的状态。`sys_env_set_trapframe`在`kern/syscall.c 中`实现 （不要忘记在 中调度新的系统调用`syscall()`）。
+
+通过运行`kern/init.c 中`的`user/spawnhello`程序来测试您的代码，该 程序将尝试从文件系统中生成`/hello`。
 
 使用make grade来测试你的代码。
 
@@ -222,7 +250,9 @@ UNIX 文件描述符是一个通用概念，还包括管道、控制台 I/O 等�
 
 我们`PTE_SHARE`在`inc/lib.h 中`定义了一个新位。该位是 Intel 和 AMD 手册中标记为“可供软件使用”的三个 PTE 位之一。我们将建立约定，如果页表条目设置了该位，则 PTE 应该在`fork`和 中直接从父级复制到子级`spawn`。请注意，这与将其标记为写时复制不同：如第一段所述，我们希望确保*共享* 对页面的更新。
 
-**锻炼8.** 变化`duppage`中`的lib / fork.c`遵循新的约定。如果页表条目`PTE_SHARE` 设置了位，则直接复制映射。（您应该使用`PTE_SYSCALL`, not`0xfff`来屏蔽页表条目中的相关位。也可以`0xfff` 获取访问过的位和脏位。）
+## **锻炼8.** 
+
+变化`duppage`中`的lib / fork.c`遵循新的约定。如果页表条目`PTE_SHARE` 设置了位，则直接复制映射。（您应该使用`PTE_SYSCALL`, not`0xfff`来屏蔽页表条目中的相关位。也可以`0xfff` 获取访问过的位和脏位。）
 
 同样，`copy_shared_pages`在 `lib/spawn.c 中实现`。它应该遍历当前进程中的所有页表条目（就像`fork` 之前所做的那样），将任何`PTE_SHARE`设置了该位的页映射复制 到子进程中。
 
@@ -234,7 +264,9 @@ UNIX 文件描述符是一个通用概念，还包括管道、控制台 I/O 等�
 
 为了让 shell 工作，我们需要一种方法来输入它。QEMU 一直在显示我们写入 CGA 显示器和串行端口的输出，但到目前为止我们只在内核监视器中获取输入。在 QEMU 中，在图形窗口中输入的输入显示为从键盘输入到 JOS，而输入到控制台的输入显示为串行端口上的字符。 `kern/console.c`已经包含自实验 1 以来内核监视器使用的键盘和串行驱动程序，但现在您需要将它们附加到系统的其余部分。
 
-**练习 9.** 在您的`kern/trap.c 中`，调用`kbd_intr`处理陷阱 `IRQ_OFFSET+IRQ_KBD`和`serial_intr`处理陷阱`IRQ_OFFSET+IRQ_SERIAL`。
+## **练习 9.** 
+
+在您的`kern/trap.c 中`，调用`kbd_intr`处理陷阱 `IRQ_OFFSET+IRQ_KBD`和`serial_intr`处理陷阱`IRQ_OFFSET+IRQ_SERIAL`。
 
 我们在`lib/console.c 中`为您实现了控制台输入/输出文件类型。`kbd_intr`并`serial_intr` 在控制台文件类型耗尽缓冲区时用最近读取的输入填充缓冲区（控制台文件类型默认用于 stdin/stdout，除非用户重定向它们）。
 
@@ -254,7 +286,7 @@ UNIX 文件描述符是一个通用概念，还包括管道、控制台 I/O 等�
 
 请注意，用户库例程`cprintf` 直接打印到控制台，而不使用文件描述符代码。这对于调试非常有用，但对于管道到其他程序来说却不是很好。要将输出打印到特定文件描述符（例如，1，标准输出），请使用`fprintf(1, "...", ...)`. `printf("...", ...)`是打印到 FD 1 的`快捷方式。`有关示例，请参见`user/lsfd.c`。
 
-**练习 10。**
+## **练习 10。**
 
 shell 不支持 I/O 重定向。运行sh <script而不是像上面那样手动输入脚本中的所有命令会很好 。为 < to 添加 I/O 重定向 `user/sh.c`。
 
@@ -284,3 +316,365 @@ shell 不支持 I/O 重定向。运行sh <script而不是像上面那样手动�
 此时您的代码应该通过所有测试。像往常一样，您可以使用 对您的提交进行评分make grade并使用 make handin。
 
 **这样就完成了实验室。** 像往常一样，不要忘记跑步make grade并写下您的答案和挑战练习解决方案的描述。在提交之前，使用git status和git diff 检查您的更改，不要忘记git add answers-lab5.txt。准备好后，使用 提交您的更改 git commit -am 'my solutions to lab 5'，然后make handin提交您的解决方案。
+
+# 回答问题汇总
+
+## Exercise 1
+
+首先我们要赋予文件系统I/O特权，作为实现文件系统的第一步。
+
+在i386_init里调用env_create，因此取消这部分注释，并在mmu.h找到相应的I/O权限：
+
+```
+if (type == ENV_TYPE_FS) {
+		e->env_tf.tf_eflags |= FL_IOPL_MASK;
+	}
+```
+
+
+
+## Exercise 2
+
+我们的文件系统也拥有自己的虚拟地址空间，大小为3GB：从 0x10000000 ( `DISKMAP`) 到 0xD0000000 ( `DISKMAP+DISKMAX`)。例如，磁盘块 0 映射到虚拟地址 0x10000000，磁盘块 1 映射到虚拟地址 0x10001000，依此类推。由于磁盘本身比3GB大，所以这是一个并不是很完美的想法。
+
+anyway，既然是作为拥有虚拟地址空间的一个env，我们同样要为文件系统环境提供了零拷贝的功能。当PGFLT产生时，我们从磁盘调入内存处理，而不是仅仅分配物理页置0。因此本exercise需要通过DMA方式来完成fs/bc.c中PGFLT处理和写入磁盘。
+
+通过"fs.h"找到相关宏和函数，我们可以发现
+
+```
+BLKSIZE：PGSIZE
+SECTSIZE：512B
+```
+
+bc_pgfault：读取一个磁盘块
+
+```
+addr = ROUNDDOWN(addr, PGSIZE);
+sys_page_alloc(0, addr, PTE_W|PTE_U|PTE_P);
+if ((r = ide_read(blockno * BLKSECTS, addr, BLKSECTS)) < 0)
+		panic("ide_read failed!\n");
+```
+
+flush_block：写入磁盘
+
+```
+addr = ROUNDOWN(addr, PGSIZE);//hint
+	if(!va_is_mapped(addr) || !va_is_dirty(addr))return;//hint
+	if((r = ide_write(blockno * BLKSECTS, addr, BLKSECTS)) < 0)
+		panic("flush_block: ide_write failed! %e\n", r);
+	if((r = sys_page_map(0,addr,0,addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)//hint
+		panic("flush_block: sys_page_map failed! %e\n",r);
+```
+
+
+
+## Exercise 3
+
+![Disk layout](https://pdos.csail.mit.edu/6.828/2017/labs/lab5/disk.png)
+
+我们通过bitmap来访问，这里给出一些信息
+
+```
+uint32_t *bitmap//定义：4字节，bitmap实际就是bool数组，bitmap[0]就可以访问0-31的block使用情况
+
+bitmap = disaddr(2)：return (char*)(DISKMAP + blockno * BLKSIZE)//2的block映射为bitmap
+
+bitmap[i/32] |= 1 << (blockno%32);//free block：0代表use
+```
+
+使用`free_block`作为一种模式来实现`alloc_block`的`FS / fs.c`，应在该位图找到一个免费的磁盘块，将其标记使用，并返回该块的数量。分配块时，应立即使用 将更改的位图块刷新到磁盘`flush_block`，以帮助文件系统一致性。
+
+alloc_block
+
+```
+//check_bitmap保证了0，1，bitmap所在的块都已经使用
+for(uint32_t i = 3; i < super->s_nblocks; ++i){
+		if(block_is_free(i)){
+			bitmap[i/32] &= ~(1 << (i%32));
+			flush_block(&bitmap[i/32]);
+			return i;
+		}
+	}
+	return -E_NO_DISK;
+```
+
+
+
+## Exercise 4
+
+实施 `file_block_walk` 和`file_get_block`。
+
+ `file_block_walk`从文件中的块偏移量映射到该块`struct File`或间接块中该块的指针， `pgdir_walk`与页表所做的非常相似 。
+
+ `file_get_block`更进一步，映射到实际的磁盘块，必要时分配一个新的内存块。
+
+使用make grade来测试你的代码。您的代码应该通过“file_open”、“file_get_block”、“file_flush/file_truncated/file rewrite”和“testfile”。
+
+`file_block_walk`和`file_get_block`是文件系统的主力。例如，`file_read` 和`file_write`需要 `file_get_block`来分配块和初始化。
+
+给出文件File的信息
+
+![](https://gitee.com/Khalil-Chen/img_bed/raw/master/img/202112022219165.png)
+
+```
+uint32_t f_direct[NDIRECT];//直接块pointer10个
+NINDIRECT (BLKSIZE / 4)//非直接块pointer 1024个
+uint32_t f_indirect;//非直接块的块号
+```
+
+file_block_walk
+
+```
+	//*ppdiskbno我们*之后得到块号，因此我们设置为存储块号的虚拟地址
+	//filebno是File里面block数组的索引
+	//注意这里块号和虚拟地址，File直接块里的索引区分
+	if(filebno >= NDIRECT + NINDIRECT)
+		return -E_INVAL;
+	
+	if(filebno < NDIRECT){
+		*ppdiskbno = f->f_direct + filebno;
+	}
+	else{
+		if(alloc && (f->f_indirect == 0)){
+			int r;
+			if((r = alloc_block()) < 0)
+				return r;
+			memset(diskaddr(r), 0, BLKSIZE);
+			f->f_indirect = r;
+		}
+		else if(f->f_indirect == 0){
+			return -E_NOT_FOUND;
+		}
+		*ppdiskbno = ((uint32_t *)diskaddr(f->f_indirect)) + filebno - NDIRECT;//diskaddr return char*
+	}
+	return 0;
+//在间接块分配时，我们将得到一个间接块里存储的块号 的地址，而我们filebno指向的那个块还没分配，暂时是0
+```
+
+file_get_block
+
+```
+//这里的二级指针意义是：当我修改一个变量时，我将传入一个指针，当我修改一个指针时，我将传入一个二级指针。
+	uint32_t *pdiskbno;
+	int r;
+	if((r = file_block_walk(f, filebno, &pdiskbno, 1)) < 0)
+		return r;
+	if(*pdiskbno == 0){//上文说的0
+		if((r = alloc_block()) < 0)
+			return r;
+		*pdiskbno = r;
+	}
+	*blk = (char *)diskaddr(*pdiskbno);
+	flush_block(*blk);//访问块先flush，或者分配块也先flush（空闲块虚拟地址对应的物理页不一定是空的？？？，或许只是无用功）
+	return 0;
+```
+
+至此，我们可以开始准备将分页管理和文件系统结合：通过文件系统环境来管理环境（包括自己：又当裁判又当球员）的内存和磁盘的映射。而我们将通过自定的PGFLT处理来很容易地：页表修改->磁盘写入来完成串行结合。
+
+## Exercise 5
+
+由于其他环境无法直接调用文件系统环境中的函数，我们将通过构建在 JOS 的 IPC 机制之上的*远程过程调用*或 RPC 抽象公开对文件系统环境的访问。
+
+```
+       Regular env           FS env
+   +---------------+   +---------------+
+   |      read     |   |   file_read   |
+   |   (lib/fd.c)  |   |   (fs/fs.c)   |
+...|.......|.......|...|.......^.......|...............
+   |       v       |   |       |       | RPC mechanism
+   |  devfile_read |   |  serve_read   |
+   |  (lib/file.c) |   |  (fs/serv.c)  |
+   |       |       |   |       ^       |
+   |       v       |   |       |       |
+   |     fsipc     |   |     serve     |
+   |  (lib/file.c) |   |  (fs/serv.c)  |
+   |       |       |   |       ^       |
+   |       v       |   |       |       |
+   |   ipc_send    |   |   ipc_recv    |
+   |       |       |   |       ^       |
+   +-------|-------+   +-------|-------+
+           |                   |
+           +-------------------+
+```
+
+虚线下方的所有内容只是从常规环境到文件系统环境获取读取请求的机制。从一开始，`read`（我们提供的）适用于任何文件描述符，并简单地分派到适当的设备读取函数，在这种情况下 `devfile_read`（我们可以有更多的设备类型，如管道）。 `devfile_read` 工具`read`专门针对磁盘上的文件。这个`devfile_*`函数和`lib/file.c 中`的其他函数 实现了 FS 操作的客户端，并且都以大致相同的方式工作，将参数捆绑在一个请求结构中，调用 `fsipc`发送 IPC 请求，解包并返回结果。这`fsipc` 函数只是处理向服务器发送请求和接收回复的常见细节。
+
+文件系统服务器代码可以在`fs/serv.c 中`找到。它在`serve`函数中循环，通过 IPC 无休止地接收请求，将该请求分派给适当的处理函数，并通过 IPC 将结果发送回。在读取示例中， `serve`将调度到`serve_read`，它将处理特定于读取请求的 IPC 详细信息，例如解包请求结构并最终调用 `file_read`以实际执行文件读取。
+
+回想一下，JOS 的 IPC 机制允许环境发送单个 32 位数字，并且可以选择共享页面。要将请求从客户端发送到服务器，我们使用 32 位数字作为请求类型（文件系统服务器 RPC 已编号，就像系统调用的编号方式一样）并将请求的参数存储`union Fsipc`在页面上的a 中 通过 IPC 共享。在客户端，我们总是在`fsipcbuf`; 在服务器端，我们将传入的请求页面映射到`fsreq` ( `0x0ffff000`)。
+
+服务器还通过 IPC 发回响应。我们使用 32 位数字作为函数的返回码。对于大多数 RPC，这就是它们返回的全部内容。 `FSREQ_READ`并`FSREQ_STAT`返回数据，它们只是将数据写入客户端发送请求的页面。不需要在响应 IPC 中发送此页面，因为客户端首先与文件系统服务器共享它。此外，在其响应中，`FSREQ_OPEN`与客户端共享一个新的“Fd 页面”。我们将很快返回到文件描述符页面。
+
+
+
+实现`serve_read`在`FS / serv.c`。
+
+`serve_read`的繁重工作将由已经在`fs/fs.c `中实现的`file_read` （反过来，它只是一堆对  `file_get_block`的调用）来完成。 `serve_read`只需要提供用于文件读取的RPC接口。查看注释和代码`serve_set_size`以大致了解服务器功能的结构。
+
+使用make grade来测试你的代码。您的代码应通过“serve_open/file_stat/file_close”和“file_read”以获得 70/150 的分数。
+
+给出有用的信息
+
+```
+//File
+struct File {
+	char f_name[MAXNAMELEN];	// filename
+	off_t f_size;			// file size in bytes
+	uint32_t f_type;		// file type
+
+	// Block pointers.
+	// A block is allocated iff its value is != 0.
+	uint32_t f_direct[NDIRECT];	// direct blocks
+	uint32_t f_indirect;		// indirect block
+
+	// Pad out to 256 bytes; must do arithmetic in case we're compiling
+	// fsformat on a 64-bit machine.
+	uint8_t f_pad[256 - MAXNAMELEN - 8 - 4*NDIRECT - 4];
+}
+
+//OpenFile
+struct OpenFile{
+	uint32_t o_field;//file id
+	struct File *o_file;//mapped descriptor for open file
+	int o_mode; //open mode
+	struct Fd *o_fd;//fd page
+}
+
+//called function
+ssize_t	file_read(struct File *f, void *buf, size_t count, off_t offset);
+int openfile_lookup(envid_t envid, uint32_t fileid, struct OpenFile **po);
+int	file_write(struct File *f, const void *buf, size_t count, off_t offset);
+```
+
+serve_read
+
+```
+//模仿serve_set_size来进行openfile_lookup的调用参数传入
+struct OpenFile * o;
+	int r;
+	if((r = openfile_lookup(envid, req->req_fileid, &o)) < 0)
+		return r;
+	if((r = file_read(o->o_file, ret->ret_buf, req->req_n, o->o_fd->fd_offset)) < 0)
+		return r;
+	o->o_fd->fd_offset += r;
+	return r;
+```
+
+
+
+## Exercise 6
+
+模仿已有的serve_read即可
+
+```
+int
+serve_write(envid_t envid, struct Fsreq_write *req)
+{
+	if (debug)
+		cprintf("serve_write %08x %08x %08x\n", envid, req->req_fileid, req->req_n);
+
+	// LAB 5: Your code here.
+	struct OpenFile *o;
+	int r;
+	if((r = openfile_lookup(envid, req->req_fileid, &o)) < 0)
+		return r;
+	if((r = file_write(o->o_file, req->req_buf, req->req_n, o->o_fd->fd_offset)) < 0)
+		return r;
+	o->o_fd->fd_offset += r;
+	return r;
+}
+```
+
+
+
+## Exercise 7
+
+ `spawn`依靠新的系统调用 `sys_env_set_trapframe`来初始化新创建环境的状态。`sys_env_set_trapframe`在`kern/syscall.c 中`实现 （不要忘记在 中调度新的系统调用`syscall()`）。
+
+通过运行`kern/init.c 中`的`user/spawnhello`程序来测试您的代码，该 程序将尝试从文件系统中生成`/hello`。
+
+使用make grade来测试你的代码。
+
+
+
+```
+static int
+sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
+{
+	// LAB 5: Your code here.
+	// Remember to check whether the user has supplied us with a good
+	// address!
+	int r;
+	struct Env *e;
+	if ((r = envid2env(envid, &e, 1)) < 0) {
+		return r;
+	}
+	tf->tf_eflags = FL_IF;
+	tf->tf_eflags &= ~FL_IOPL_MASK;			//普通进程不能有IO权限
+	tf->tf_cs = GD_UT | 3;
+	e->env_tf = *tf;
+	return 0;
+}
+```
+
+
+
+## Exercise 8
+
+变化`duppage`中`的lib / fork.c`遵循新的约定。如果页表条目`PTE_SHARE` 设置了位，则直接复制映射。（您应该使用`PTE_SYSCALL`, not`0xfff`来屏蔽页表条目中的相关位。也可以`0xfff` 获取访问过的位和脏位。）
+
+同样，`copy_shared_pages`在 `lib/spawn.c 中实现`。它应该遍历当前进程中的所有页表条目（就像`fork` 之前所做的那样），将任何`PTE_SHARE`设置了该位的页映射复制 到子进程中。
+
+使用make run-testpteshare来检查你的代码是否正确行为。您应该会看到写着“ `fork handles PTE_SHARE right` ”和“ `spawn handles PTE_SHARE right` ”的行。
+
+使用make run-testfdsharing检查文件描述符正确共享。您应该会看到写着“ `read in child successfully` ”和“ `read in parent successfully` ”的行。
+
+## Exercise 9
+
+在您的`kern/trap.c 中`，调用`kbd_intr`处理陷阱 `IRQ_OFFSET+IRQ_KBD`和`serial_intr`处理陷阱`IRQ_OFFSET+IRQ_SERIAL`。
+
+我们在`lib/console.c 中`为您实现了控制台输入/输出文件类型。`kbd_intr`并`serial_intr` 在控制台文件类型耗尽缓冲区时用最近读取的输入填充缓冲区（控制台文件类型默认用于 stdin/stdout，除非用户重定向它们）。
+
+通过运行make run-testkbd并键入几行来测试您的代码。当您完成它们时，系统应该将您的台词回显给您。尝试在控制台和图形窗口中输入，如果两者都可用的话
+
+copy_shared_pages
+
+```
+static int
+copy_shared_pages(envid_t child)
+{
+	// LAB 5: Your code here.
+	uintptr_t addr;
+	for (addr = 0; addr < UTOP; addr += PGSIZE) {
+		if ((uvpd[PDX(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & PTE_P) &&
+				(uvpt[PGNUM(addr)] & PTE_U) && (uvpt[PGNUM(addr)] & PTE_SHARE)) {
+            sys_page_map(0, (void*)addr, child, (void*)addr, (uvpt[PGNUM(addr)] & PTE_SYSCALL));
+        }
+	}
+	return 0;
+}
+```
+
+
+
+## Exercise 10
+
+shell 不支持 I/O 重定向。运行sh <script而不是像上面那样手动输入脚本中的所有命令会很好 。为 < to 添加 I/O 重定向 `user/sh.c`。
+
+通过sh <script在 shell 中键入内容来测试您的实现
+
+运行make run-testshell以测试您的外壳。 `testshell`只是将上述命令（也可以在`fs/testshell.sh 中`找到 ）输入 shell，然后检查输出是否与`fs/testshell.key`匹配。
+
+```
+if ((fd = open(t, O_RDONLY)) < 0) {
+				cprintf("open %s for write: %e", t, fd);
+				exit();
+			}
+			if (fd != 0) {
+				dup(fd, 0);
+				close(fd);
+			}
+```
+
+![](https://gitee.com/Khalil-Chen/img_bed/raw/master/img/202112031512935.png)
+
